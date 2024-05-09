@@ -1,0 +1,9 @@
+{
+  "projects": {
+    "default": "benefit-service-spid",
+    "staging": "staging-benefit-service-spid"
+  },
+  "targets": {},
+  "etags": {},
+  "dataconnectEmulatorConfig": {}
+}
