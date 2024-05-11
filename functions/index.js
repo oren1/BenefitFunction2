@@ -14,6 +14,9 @@ const logger = require("firebase-functions/logger");
 // The Firebase Admin SDK to access Firestore.
 const {initializeApp} = require("firebase-admin/app");
 const {getFirestore} = require("firebase-admin/firestore");
+const express = require('express')
+const bodyParser = require("body-parser");
+
 const {ResponseKeys ,BenefitStatus, userConverter} = require('./entities')
 
 const app = initializeApp();
@@ -23,12 +26,15 @@ const toTimestamp = date => Math.floor(date.getTime() / 1000);
 
 const {Success, Message, Data} = ResponseKeys
 
-exports.createUser = onRequest(async (req, res) => {
+const expressApp = express();
+expressApp.use(bodyParser.json());
+
+expressApp.post('/createUser', async (req, res) => {
     // Grab the text parameter.
     const userId = req.body.userId;
     const benefitExpirationDate = new Date();
     benefitExpirationDate.setMonth(benefitExpirationDate.getMonth() + 1);
-    
+
     // Create a new user with id and expiration date for the benefit
     try {
         const userRef = await getFirestore()
@@ -38,7 +44,7 @@ exports.createUser = onRequest(async (req, res) => {
             benefitExpirationDate: toTimestamp(benefitExpirationDate)});
         const user = await userRef.get() 
             
-        // Send back a message that we've successfully written the message
+        
         res.json({
             [Success]: true,
             [Message]: "User Created Successfully",
@@ -57,54 +63,50 @@ exports.createUser = onRequest(async (req, res) => {
     }
 });
 
-exports.benefitStatusForUser = onRequest(async (req, res) => {
-    // Grab the text parameter.
+expressApp.post('/benefitStatusForUser', async (req, res) => {
     const userId = req.body.userId;
-   try {
-        const querySnapshot = await getFirestore()
-        .collection("users")
-        .withConverter(userConverter)
-        .where('userId', '==', userId)
-        .get()
-        
-        let benefitStatus;
-        let user;
+    try {
+         const querySnapshot = await getFirestore()
+         .collection("users")
+         .withConverter(userConverter)
+         .where('userId', '==', userId)
+         .get()
+         
+         let benefitStatus;
+         let user;
+ 
+         if (querySnapshot.docs.length == 0) { // User doesn't exist
+             benefitStatus = BenefitStatus.NotInvoked
+         }
+         else {
+             user = querySnapshot.docs[0]
+             let now = toTimestamp(new Date()) 
+             if (now > user.data().benefitExpirationDate) {
+                 benefitStatus = BenefitStatus.Expired
+             }
+             else {
+                 benefitStatus = BenefitStatus.Entitled
+             }
+             
+         } 
 
-        if (querySnapshot.docs.length == 0) { // User doesn't exist
-            benefitStatus = BenefitStatus.NotInvoked
-            console.log(benefitStatus)
-        }
-        else {
-            user = querySnapshot.docs[0]
-            let now = toTimestamp(new Date()) 
-            console.log(now)
-            if (now > user.data().benefitExpirationDate) {
-                benefitStatus = BenefitStatus.Expired
-                console.log(benefitStatus)
-            }
-            else {
-                benefitStatus = BenefitStatus.Entitled
-                console.log(benefitStatus)
-            }
-            
-        } 
-        // Send back a message that we've successfully written the message
-        res.json({
-            [Success]: true,
-            [Message]: "Benefit Status Fetched Successfully",
-            [Data]: {
-                userId: userId,
-                benefitStatus: benefitStatus
-                }   
-        })
-   } catch (error) {
-    res.json({
-        [Success]: false,
-        [Message]: error.message,
-        [Data]: {}
-    })
-   }
-    
+         res.json({
+             [Success]: true,
+             [Message]: "Benefit Status Fetched Successfully",
+             [Data]: {
+                 userId: userId,
+                 benefitStatus: benefitStatus
+                 }   
+         })
+    } catch (error) {
+     res.json({
+         [Success]: false,
+         [Message]: error.message,
+         [Data]: {}
+     })
+    }
+})
 
-});
+// Expose Express API as a single Cloud Function:
+exports.spid = onRequest(expressApp);
 
