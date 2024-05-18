@@ -50,7 +50,7 @@ expressApp.post('/createUser', async (req, res) => {
             [Message]: "User Created Successfully",
             [Data]: {
                 userId: user.data().userId,
-                benefitExpirationDate: user.data().benefitExpirationDate
+                benefitStatus: BenefitStatus.Entitled
                 }   
         })
 
