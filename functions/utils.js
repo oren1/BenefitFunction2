@@ -1,0 +1,1 @@
+exports.toTimestamp = date => Math.floor(date.getTime() / 1000);
