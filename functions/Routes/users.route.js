@@ -42,7 +42,7 @@ usersRouter.post('/users', async (req, res, next) => {
     }
 });
 
-usersRouter.get('/users/:userId', async (req, res, next) => {
+usersRouter.get('/users/:userId/benefitstatus', async (req, res, next) => {
     const userId = req.params.userId;
     try {
         const status = await getBenefitStatusByUserId(userId)
