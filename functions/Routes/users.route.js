@@ -1,9 +1,10 @@
 const { Router } = require("express");
-const {BenefitStatus, userConverter} = require('../entities')
+const { BenefitStatus, userConverter } = require('../entities')
 const { getUser } = require("../Services/users.service");
 const { getBenefitStatusByUserId } = require("../Services/benefits.service");
 const { toTimestamp } = require('../utils')
-const {getFirestore} = require("firebase-admin/firestore");
+const { getFirestore } = require("firebase-admin/firestore");
+const { logger } = require("firebase-functions/v2");
 
 const usersRouter = Router();
 
@@ -12,7 +13,8 @@ usersRouter.post('/users', async (req, res, next) => {
     // Grab the userId parameter.
     const userId = req.body.userId;
     const benefitExpirationDate = new Date();
-    benefitExpirationDate.setMonth(benefitExpirationDate.getMonth() + 1);
+    benefitExpirationDate.setMonth(benefitExpirationDate.getMonth() + 3);
+    // benefitExpirationDate.setMinutes(benefitExpirationDate.getMinutes() + 3)
 
     // Create a new user with id and expiration date for the benefit
     try {
@@ -20,17 +22,23 @@ usersRouter.post('/users', async (req, res, next) => {
         const user = await getUser(userId)
 
         if (user == null) { // User doesn't exist
+            let startTime = Date.now()
             const userRef = await getFirestore()
-            .collection("users")
-            .withConverter(userConverter)
-            .add({userId: userId,
-                benefitExpirationDate: toTimestamp(benefitExpirationDate)});
-                
-            res.success("User Created Successfully", 
-            {
-                userId: userId,
-                benefitStatus: BenefitStatus.Entitled
-            })
+                .collection("users")
+                .withConverter(userConverter)
+                .add({
+                    userId: userId,
+                    benefitExpirationDate: toTimestamp(benefitExpirationDate)
+                });
+
+            let requestTime = Date.now() - startTime
+            logger.info("Create User  - Request Time", requestTime)
+
+            res.success("User Created Successfully",
+                {
+                    userId: userId,
+                    benefitStatus: BenefitStatus.Entitled
+                })
         }
         else {
             res.failure("User Alreafy Exists", {})
@@ -48,12 +56,12 @@ usersRouter.get('/users/:userId/benefitstatus', async (req, res, next) => {
         const status = await getBenefitStatusByUserId(userId)
 
         res.success("Benefit Status Fetched Successfully",
-        {
-            userId: userId,
-            benefitStatus: status   
-        })
+            {
+                userId: userId,
+                benefitStatus: status
+            })
     } catch (error) {
-        res.failure(error.message,{})
+        res.failure(error.message, {})
     }
 })
 
