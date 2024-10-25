@@ -46,6 +46,7 @@ usersRouter.post('/users', async (req, res, next) => {
 
 
     } catch (error) {
+        logger.info("Create User  - Error", error.message)
         res.failure(error.message, {})
     }
 });
@@ -61,6 +62,7 @@ usersRouter.get('/users/:userId/benefitstatus', async (req, res, next) => {
                 benefitStatus: status
             })
     } catch (error) {
+        logger.info("Get User  - Error", error.message)
         res.failure(error.message, {})
     }
 })
